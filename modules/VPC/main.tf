@@ -68,3 +68,49 @@ resource "aws_subnet" "private_subnets" {
     ManagedBy   = "Terraform"
   }
 }
+########################################
+# Public Route Table
+########################################
+
+resource "aws_route_table" "public_rt" {
+  vpc_id = aws_vpc.astranova_vpc.id
+
+  tags = {
+    Name        = "astranova-${var.environment}-public-rt"
+    Environment = var.environment
+    Project     = "AstraNova"
+    ManagedBy   = "Terraform"
+  }
+}
+
+resource "aws_route" "public_internet_access" {
+  route_table_id         = aws_route_table.public_rt.id
+  destination_cidr_block = "0.0.0.0/0"
+  gateway_id             = aws_internet_gateway.astranova_igw.id
+}
+
+resource "aws_route_table_association" "public_assoc" {
+  count          = length(aws_subnet.public_subnets)
+  subnet_id      = aws_subnet.public_subnets[count.index].id
+  route_table_id = aws_route_table.public_rt.id
+}
+########################################
+# Private Route Table
+########################################
+
+resource "aws_route_table" "private_rt" {
+  vpc_id = aws_vpc.astranova_vpc.id
+
+  tags = {
+    Name        = "astranova-${var.environment}-private-rt"
+    Environment = var.environment
+    Project     = "AstraNova"
+    ManagedBy   = "Terraform"
+  }
+}
+
+resource "aws_route_table_association" "private_assoc" {
+  count          = length(aws_subnet.private_subnets)
+  subnet_id      = aws_subnet.private_subnets[count.index].id
+  route_table_id = aws_route_table.private_rt.id
+}
