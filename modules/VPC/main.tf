@@ -16,21 +16,6 @@ resource "aws_vpc" "astranova_vpc" {
 }
 
 ########################################
-# Internet Gateway
-########################################
-
-resource "aws_internet_gateway" "astranova_igw" {
-  vpc_id = aws_vpc.astranova_vpc.id
-
-  tags = {
-    Name        = "astranova-${var.environment}-igw"
-    Environment = var.environment
-    Project     = "AstraNova"
-    ManagedBy   = "Terraform"
-  }
-}
-
-########################################
 # Public Subnets
 ########################################
 
@@ -68,6 +53,55 @@ resource "aws_subnet" "private_subnets" {
     ManagedBy   = "Terraform"
   }
 }
+
+########################################
+# Internet Gateway
+########################################
+
+resource "aws_internet_gateway" "astranova_igw" {
+  vpc_id = aws_vpc.astranova_vpc.id
+
+  tags = {
+    Name        = "astranova-${var.environment}-igw"
+    Environment = var.environment
+    Project     = "AstraNova"
+    ManagedBy   = "Terraform"
+  }
+}
+
+########################################
+# Elastic IP for NAT
+########################################
+
+resource "aws_eip" "nat_eip" {
+  domain = "vpc"
+
+  tags = {
+    Name        = "astranova-${var.environment}-nat-eip"
+    Environment = var.environment
+    Project     = "AstraNova"
+    ManagedBy   = "Terraform"
+  }
+}
+
+########################################
+# NAT Gateway (Placed in first public subnet)
+########################################
+
+resource "aws_nat_gateway" "nat_gw" {
+  allocation_id = aws_eip.nat_eip.id
+  subnet_id     = aws_subnet.public_subnets[0].id
+
+  tags = {
+    Name        = "astranova-${var.environment}-nat-gw"
+    Environment = var.environment
+    Project     = "AstraNova"
+    ManagedBy   = "Terraform"
+  }
+
+  depends_on = [aws_internet_gateway.astranova_igw]
+}
+
 ########################################
 # Public Route Table
 ########################################
@@ -94,6 +128,7 @@ resource "aws_route_table_association" "public_assoc" {
   subnet_id      = aws_subnet.public_subnets[count.index].id
   route_table_id = aws_route_table.public_rt.id
 }
+
 ########################################
 # Private Route Table
 ########################################
@@ -107,6 +142,16 @@ resource "aws_route_table" "private_rt" {
     Project     = "AstraNova"
     ManagedBy   = "Terraform"
   }
+}
+
+########################################
+# Private Route to NAT
+########################################
+
+resource "aws_route" "private_nat_route" {
+  route_table_id         = aws_route_table.private_rt.id
+  destination_cidr_block = "0.0.0.0/0"
+  nat_gateway_id         = aws_nat_gateway.nat_gw.id
 }
 
 resource "aws_route_table_association" "private_assoc" {
