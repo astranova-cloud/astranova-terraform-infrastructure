@@ -1,7 +1,13 @@
+# Terraform
 .terraform/
 *.tfstate
 *.tfstate.*
 crash.log
+
+# Terraform lock
 .terraform.lock.hcl
-terraform.tfstate
+
+# Sensitive files
+*.tfvars
+*.tfvars.json
 
